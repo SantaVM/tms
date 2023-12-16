@@ -19,6 +19,7 @@ import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class UserService {
     private final UserRepository repository;
     private final PasswordEncoder encoder;

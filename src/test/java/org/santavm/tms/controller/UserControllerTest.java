@@ -24,6 +24,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -56,6 +57,8 @@ class UserControllerTest {
         User bob = User.builder()
                 .id(1000L).firstName("user").lastName("Doe").email("bob@domain.com")
                 .password("password").role(User.Role.USER)
+                .tasksAsAuthor(new TreeSet<>())
+                .tasksAsExecutor(new TreeSet<>())
                 .build();
 
         Mockito.when(userRepository.save( ArgumentMatchers.any() )).thenReturn(bob);

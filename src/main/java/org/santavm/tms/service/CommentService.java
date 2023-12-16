@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.santavm.tms.model.Comment;
 import org.santavm.tms.model.User;
 import org.santavm.tms.repository.CommentRepository;
+import org.santavm.tms.repository.TaskRepository;
 import org.santavm.tms.util.CustomPermissionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +23,7 @@ import java.util.NoSuchElementException;
 public class CommentService {
     private final CommentRepository repository;
 
-//    private final TaskService taskService;
+    private final TaskRepository taskRepository; // repo to avoid circular dependencies warning
 
     // when Task deleted
     public void deleteAllByTask(Long taskId){
@@ -81,10 +82,10 @@ public class CommentService {
             throw new CustomPermissionException("You can not create comment with authorId: " + comment.getAuthorId());
         }
 
-/*        // Check Task presence
-        if( !taskService.existsById(comment.getTaskId())){
+        // Check Task presence
+        if( !taskRepository.existsById(comment.getTaskId())){
             throw new NoSuchElementException("There is no Task with taskId: " + comment.getTaskId());
-        }*/
+        }
 
         return repository.saveAndFlush(comment);
     }

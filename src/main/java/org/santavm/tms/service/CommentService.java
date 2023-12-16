@@ -6,7 +6,6 @@ import org.santavm.tms.model.User;
 import org.santavm.tms.repository.CommentRepository;
 import org.santavm.tms.repository.TaskRepository;
 import org.santavm.tms.util.CustomPermissionException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -27,18 +26,16 @@ public class CommentService {
 
     // when Task deleted
     public void deleteAllByTask(Long taskId){
-        List<Comment> commentList = repository.findAllByTaskId(taskId, Pageable.unpaged());
-        List<Long> idList = commentList.stream().map(Comment::getId).toList();
-        repository.deleteAllByIdInBatch(idList);
+        List<Comment> commentList = repository.findAllByTaskId(taskId, Pageable.unpaged()).getContent();
+        repository.deleteAll(commentList);
 
         //update Users (too expensive)
     }
 
     // when Author deleted
     public void deleteAllByAuthor(Long authorId){
-        List<Comment> commentList = repository.findAllByAuthorId(authorId, Pageable.unpaged());
-        List<Long> idList = commentList.stream().map(Comment::getId).toList();
-        repository.deleteAllByIdInBatch(idList);
+        List<Comment> commentList = repository.findAllByAuthorId(authorId, Pageable.unpaged()).getContent();
+        repository.deleteAll(commentList);
     }
 
     public void deleteOne(Long id, Authentication auth){
@@ -100,14 +97,14 @@ public class CommentService {
     }
 
     public List<Comment> findAllByTaskId(Long taskId, Pageable pageable) {
-        return repository.findAllByTaskId(taskId, pageable);
+        return repository.findAllByTaskId(taskId, pageable).getContent();
     }
 
     public List<Comment> findAllByAuthorId(Long authorId, Pageable pageable) {
-        return repository.findAllByAuthorId(authorId, pageable);
+        return repository.findAllByAuthorId(authorId, pageable).getContent();
     }
 
     public List<Comment> findAllByTaskAndAuthor(Long taskId, Long authorId, Pageable pageable) {
-        return repository.findAllByAuthorIdAndTaskId(authorId, taskId, pageable);
+        return repository.findAllByAuthorIdAndTaskId(authorId, taskId, pageable).getContent();
     }
 }

@@ -7,6 +7,7 @@ import org.santavm.tms.repository.TaskRepository;
 import org.santavm.tms.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.TreeSet;
@@ -21,6 +22,7 @@ import java.util.TreeSet;
 public class DataLoader implements CommandLineRunner {
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) throws Exception {
@@ -28,7 +30,7 @@ public class DataLoader implements CommandLineRunner {
                 .firstName("Admin")
                 .lastName("Admin")
                 .email("adm@site.com")
-                .password("123")
+                .password(passwordEncoder.encode("123"))
                 .role(User.Role.ADMIN)
                 .tasksAsAuthor(new TreeSet<>())
                 .tasksAsExecutor(new TreeSet<>())
@@ -40,7 +42,7 @@ public class DataLoader implements CommandLineRunner {
                 .firstName("User")
                 .lastName("User")
                 .email("user@site.com")
-                .password("123")
+                .password(passwordEncoder.encode("123"))
                 .role(User.Role.USER)
                 .tasksAsAuthor(new TreeSet<>())
                 .tasksAsExecutor(new TreeSet<>())

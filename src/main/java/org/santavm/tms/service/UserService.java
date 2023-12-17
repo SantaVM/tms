@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
@@ -63,7 +62,11 @@ public class UserService {
         return userList.stream().map(this::mapUserToDto).toList();
     }
 
-    public Optional<User> findOne(Long id){
+    public boolean existsById(Long id){
+        return repository.existsById(id);
+    }
+
+    public Optional<User> findById(Long id){
         return repository.findById(id);
     }
 

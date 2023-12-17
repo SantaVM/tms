@@ -25,7 +25,6 @@ public class Task {
     @Size(max = 255)
     private String title;
 
-    @Lob
     @NotBlank
     private String description;
 
@@ -47,16 +46,6 @@ public class Task {
 
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedAt;
-
-/*    @ElementCollection
-    private Set<Long> comments = new TreeSet<>();
-
-    public void addComment(Long commentId){
-        this.comments.add(commentId);
-    }
-    public boolean removeComment(Long commentId){
-        return this.comments.remove(commentId);
-    }*/
 
 /*    public boolean onlyStatusChanged(Task task) {
 

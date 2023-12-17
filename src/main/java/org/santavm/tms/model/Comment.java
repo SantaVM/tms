@@ -26,7 +26,6 @@ public class Comment {
     private Long authorId;
 
     @NotBlank
-    @Lob
     private String content;
 
     @Temporal(TemporalType.TIMESTAMP)

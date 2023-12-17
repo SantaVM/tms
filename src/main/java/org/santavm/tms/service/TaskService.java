@@ -1,7 +1,6 @@
 package org.santavm.tms.service;
 
 import lombok.RequiredArgsConstructor;
-import org.santavm.tms.model.Comment;
 import org.santavm.tms.model.Task;
 import org.santavm.tms.model.User;
 import org.santavm.tms.repository.TaskRepository;
@@ -12,7 +11,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.security.Principal;
 import java.util.*;
 
 @Service
@@ -24,22 +22,21 @@ public class TaskService {
     private final CommentService commentService;
 
     public List<Task> findAllByAuthorId(Long authorId, Pageable pageable){
-        Optional<User> author = userService.findOne(authorId);
-        if(author.isEmpty()){
-            return Collections.singletonList(this.badTask());
+        if( !userService.existsById(authorId) ){
+            throw new NoSuchElementException("There is no User with id: " + authorId);
         }
         return repository.findAllByAuthorId(authorId, pageable);
     }
 
     public Task createTask(Task task) {
         //TODO set author as logged in user? - Dataloader refactor see CommServ
-        Optional<User> authorUser = userService.findOne(task.getAuthorId());
+        Optional<User> authorUser = userService.findById(task.getAuthorId());
         Optional<User> executorUser = Optional.empty();
         if (authorUser.isEmpty()){
             return this.badTask();
         }
         if(task.getExecutorId() != null){
-            executorUser = userService.findOne(task.getExecutorId());
+            executorUser = userService.findById(task.getExecutorId());
             if(executorUser.isEmpty()){
                 return this.badTask();
             }
@@ -83,14 +80,14 @@ public class TaskService {
         commentService.deleteAllByTask(id);
 
         // update User DB
-        User author = userService.findOne(authorId).orElseThrow(); // should exist
+        User author = userService.findById(authorId).orElseThrow(); // should exist
         author.removeTaskAsAuthor(id);
         if ( authorId.equals(executorId) ) author.removeTaskAsExecutor(id);
         userService.update(author);
 
         if ( !authorId.equals(executorId)) {
             if(executorId != null){
-                User executor = userService.findOne(executorId).orElseThrow(); // should exist
+                User executor = userService.findById(executorId).orElseThrow(); // should exist
                 executor.removeTaskAsExecutor(id);
                 userService.update(executor);
             }
@@ -133,7 +130,7 @@ public class TaskService {
             if(fromDb.getExecutorId() == null){ // was null, setting new executor
 
                 // update User DB
-                User newExecutorUser = userService.findOne(task.getExecutorId())
+                User newExecutorUser = userService.findById(task.getExecutorId())
                         .orElseThrow(() -> new NoSuchElementException("There is no User with id: "+task.getExecutorId()) );
                 newExecutorUser.addTaskAsExecutor(task.getId());
                 userService.update(newExecutorUser);
@@ -142,18 +139,18 @@ public class TaskService {
             } else if (task.getExecutorId() == null) {  // just delete current executor
 
                 // updating User DB
-                User oldExecutorUser = userService.findOne(fromDb.getExecutorId()).orElseThrow();
+                User oldExecutorUser = userService.findById(fromDb.getExecutorId()).orElseThrow();
                 oldExecutorUser.removeTaskAsExecutor(task.getId());
                 userService.update(oldExecutorUser);
                 // update this Task
                 fromDb.setExecutorId(task.getExecutorId());
             } else { // change current executor
                 // update User DB
-                User newExecutorUser = userService.findOne(task.getExecutorId()).orElseThrow();
+                User newExecutorUser = userService.findById(task.getExecutorId()).orElseThrow();
                 newExecutorUser.addTaskAsExecutor(task.getId());
                 userService.update(newExecutorUser);
 
-                User oldExecutorUser = userService.findOne(fromDb.getExecutorId()).orElseThrow();
+                User oldExecutorUser = userService.findById(fromDb.getExecutorId()).orElseThrow();
                 oldExecutorUser.removeTaskAsExecutor(task.getId());
                 userService.update(oldExecutorUser);
                 // update this Task

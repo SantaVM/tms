@@ -1,6 +1,7 @@
 package org.santavm.tms.repository;
 
 import org.santavm.tms.model.Task;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +13,7 @@ import java.util.List;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long>, ListPagingAndSortingRepository<Task, Long> { // JpaSpecificationExecutor<Task>
-    // Фильтрация по автору задачи и пагинация
+    // !!! List as return type
     List<Task> findAllByAuthorId(Long authorId, Pageable pageable);
 
     // Фильтрация по исполнителю задачи и пагинация

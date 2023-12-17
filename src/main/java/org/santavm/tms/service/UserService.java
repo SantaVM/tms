@@ -8,13 +8,12 @@ import org.santavm.tms.model.User;
 import org.santavm.tms.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +22,8 @@ public class UserService {
     private final UserRepository repository;
     private final PasswordEncoder encoder;
     private final JwtService jwtService;
+    private final CommentService commentService;
+    private final TaskService taskService;
 
     private final AuthenticationManager authenticationManager;
 
@@ -33,16 +34,11 @@ public class UserService {
         Optional<User> userFromDb = repository.findByEmail(userDTO.getEmail());
 
         if (userFromDb.isPresent()) {
-            //TODO need better response
-            // return new AuthResponse("This email is already registered: " + userFromDb.get().getEmail());
-            User badUser = User.builder().email(userFromDb.get().getEmail()).build();
-            return this.mapUserToDto(badUser);
+            throw new NoSuchElementException("ERROR: Email already registered: " + userDTO.getEmail());
         }
 
         User savedUser = repository.saveAndFlush(user);
         return this.mapUserToDto(savedUser);  // TODO тут падают тесты
-//        String token = jwtService.generateToken(user.getEmail());
-//        return new AuthResponse(token);
     }
 
     public AuthResponse login(AuthRequest authRequest){
@@ -62,18 +58,7 @@ public class UserService {
         return userList.stream().map(this::mapUserToDto).toList();
     }
 
-    public boolean existsById(Long id){
-        return repository.existsById(id);
-    }
-
-    public Optional<User> findById(Long id){
-        return repository.findById(id);
-    }
-
-    public void update(User user){
-        repository.save(user);
-    }
-
+    //TODO delete this
     public AuthResponse testProtected() {
         String userList = "Tested!";
         return new AuthResponse(100500L, userList);
@@ -102,8 +87,23 @@ public class UserService {
                 .build();
     }
 
-    //TODO cascade deletion to Tasks and Comments
+    // Only ADMIN  user can do this
     public void deleteUser(Long userId) {
+        Optional<User> userOptional = repository.findById(userId);
+        if( userOptional.isEmpty()){
+            throw new NoSuchElementException("There is no User with id: " + userId);
+        }
+        User user = userOptional.get();
+        Set<Long> tasksAsAuthor = user.getTasksAsAuthor();
+        Set<Long> tasksAsExecutor = user.getTasksAsExecutor();
+
+        // delete all comments
+        commentService.deleteAllByAuthor(userId);
+
+        // delete all tasks by user
+        taskService.deleteAllByAuthor(userId, tasksAsAuthor, tasksAsExecutor);
+
+        // update User DB
         repository.deleteById(userId);
     }
 }

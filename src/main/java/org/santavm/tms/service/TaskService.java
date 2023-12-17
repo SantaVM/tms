@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.santavm.tms.model.Task;
 import org.santavm.tms.model.User;
 import org.santavm.tms.repository.TaskRepository;
+import org.santavm.tms.repository.UserRepository;
 import org.santavm.tms.util.CustomPermissionException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,18 +19,18 @@ import java.util.*;
 @Transactional  // LOB field needs this
 public class TaskService {
     private final TaskRepository repository;
-    private final UserService userService;
+    private final UserRepository userRepository;
     private final CommentService commentService;
 
     public List<Task> findAllByAuthorId(Long authorId, Pageable pageable){
-        if( !userService.existsById(authorId) ){
+        if( !userRepository.existsById(authorId) ){
             throw new NoSuchElementException("There is no User with id: " + authorId);
         }
         return repository.findAllByAuthorId(authorId, pageable);
     }
 
     public Task createTask(Task task, Authentication auth) {
-        Optional<User> authorUser = userService.findById(task.getAuthorId());
+        Optional<User> authorUser = userRepository.findById(task.getAuthorId());
         Optional<User> executorUser = Optional.empty();
 
         // Only User-Author can delete Task
@@ -43,7 +44,7 @@ public class TaskService {
             return this.badTask();
         }
         if(task.getExecutorId() != null){
-            executorUser = userService.findById(task.getExecutorId());
+            executorUser = userRepository.findById(task.getExecutorId());
             if(executorUser.isEmpty()){
                 return this.badTask();
             }
@@ -55,9 +56,9 @@ public class TaskService {
         if(executorUser.isPresent()){
             User executor = executorUser.get();
             executor.addTaskAsExecutor(saved.getId());
-            userService.update(executor);
+            userRepository.save(executor);
         }
-        userService.update(author);
+        userRepository.save(author);
 
         return saved;
     }
@@ -82,20 +83,21 @@ public class TaskService {
 
         // update Task DB
         repository.deleteById(id);
+
         //update Comment DB
         commentService.deleteAllByTask(id);
 
         // update User DB
-        User author = userService.findById(authorId).orElseThrow(); // should exist
+        User author = userRepository.findById(authorId).orElseThrow(); // should exist
         author.removeTaskAsAuthor(id);
         if ( authorId.equals(executorId) ) author.removeTaskAsExecutor(id);
-        userService.update(author);
+        userRepository.save(author);
 
         if ( !authorId.equals(executorId)) {
             if(executorId != null){
-                User executor = userService.findById(executorId).orElseThrow(); // should exist
+                User executor = userRepository.findById(executorId).orElseThrow(); // should exist
                 executor.removeTaskAsExecutor(id);
-                userService.update(executor);
+                userRepository.save(executor);
             }
         }
     }
@@ -136,29 +138,29 @@ public class TaskService {
             if(fromDb.getExecutorId() == null){ // was null, setting new executor
 
                 // update User DB
-                User newExecutorUser = userService.findById(task.getExecutorId())
+                User newExecutorUser = userRepository.findById(task.getExecutorId())
                         .orElseThrow(() -> new NoSuchElementException("There is no User with id: "+task.getExecutorId()) );
                 newExecutorUser.addTaskAsExecutor(task.getId());
-                userService.update(newExecutorUser);
+                userRepository.save(newExecutorUser);
                 // update this Task
                 fromDb.setExecutorId(task.getExecutorId());
             } else if (task.getExecutorId() == null) {  // just delete current executor
 
                 // updating User DB
-                User oldExecutorUser = userService.findById(fromDb.getExecutorId()).orElseThrow();
+                User oldExecutorUser = userRepository.findById(fromDb.getExecutorId()).orElseThrow();
                 oldExecutorUser.removeTaskAsExecutor(task.getId());
-                userService.update(oldExecutorUser);
+                userRepository.save(oldExecutorUser);
                 // update this Task
                 fromDb.setExecutorId(task.getExecutorId());
             } else { // change current executor
                 // update User DB
-                User newExecutorUser = userService.findById(task.getExecutorId()).orElseThrow();
+                User newExecutorUser = userRepository.findById(task.getExecutorId()).orElseThrow();
                 newExecutorUser.addTaskAsExecutor(task.getId());
-                userService.update(newExecutorUser);
+                userRepository.save(newExecutorUser);
 
-                User oldExecutorUser = userService.findById(fromDb.getExecutorId()).orElseThrow();
+                User oldExecutorUser = userRepository.findById(fromDb.getExecutorId()).orElseThrow();
                 oldExecutorUser.removeTaskAsExecutor(task.getId());
-                userService.update(oldExecutorUser);
+                userRepository.save(oldExecutorUser);
                 // update this Task
                 fromDb.setExecutorId(task.getExecutorId());
             }
@@ -180,6 +182,34 @@ public class TaskService {
         }
         assert user != null;
         return user.getId();
+    }
+
+    //when Author user deleted
+    public void deleteAllByAuthor(Long authorId, Set<Long> asAuthor, Set<Long> asExecutor){
+
+        // update every task with THIS User as executor
+        List<Long> tasksToClearAsExecutor = new ArrayList<>(asExecutor);
+        repository.clearExecutors(tasksToClearAsExecutor);
+
+        // then update every NotNull executor User in every deleted task
+        List<Long> tasksToDelete = new ArrayList<>(asAuthor);
+        for(Long taskId : tasksToDelete){
+            Task task = repository.findById(taskId).orElseThrow();
+            Long exId = task.getExecutorId();
+            if( exId != null){
+                User executor = userRepository.findById(exId).orElseThrow();
+                executor.removeTaskAsExecutor(taskId);
+                userRepository.save(executor);
+            }
+        }
+
+        // then delete comments for the Tasks
+        for(Long taskId : tasksToDelete){
+            commentService.deleteAllByTask(taskId);
+        }
+
+        // then delete all tasks
+        repository.deleteAllByIdInBatch(tasksToDelete);
     }
 
     public boolean existsById(Long taskId) {

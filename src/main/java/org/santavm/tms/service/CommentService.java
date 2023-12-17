@@ -26,16 +26,13 @@ public class CommentService {
 
     // when Task deleted
     public void deleteAllByTask(Long taskId){
-        List<Comment> commentList = repository.findAllByTaskId(taskId, Pageable.unpaged()).getContent();
-        repository.deleteAll(commentList);
-
+        repository.deleteCommentsByTaskId(taskId);
         //update Users (too expensive)
     }
 
     // when Author deleted
     public void deleteAllByAuthor(Long authorId){
-        List<Comment> commentList = repository.findAllByAuthorId(authorId, Pageable.unpaged()).getContent();
-        repository.deleteAll(commentList);
+        repository.deleteCommentsByAuthorId(authorId);
     }
 
     public void deleteOne(Long id, Authentication auth){

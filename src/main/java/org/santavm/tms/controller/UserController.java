@@ -1,6 +1,5 @@
 package org.santavm.tms.controller;
 
-import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.santavm.tms.dto.AuthRequest;
@@ -13,16 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.NoSuchElementException;
-
-import static org.springframework.http.HttpStatus.CREATED;
 
 @RestController
 @RequestMapping("/users")
@@ -33,9 +26,6 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody UserDTO userDTO){
         UserDTO regUser = service.register(userDTO);
-        if(regUser.getId() == null){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ERROR: Email already registered: " + regUser.getEmail() + "! Change it!");
-        }
         return ResponseEntity.status(HttpStatus.CREATED).body("User created successfully: " + regUser.getId());
     }
 
@@ -57,7 +47,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully: " + id);
     }
 
-    @GetMapping("/protected")
+    @GetMapping("/protected")  //TODO remove this
     public ResponseEntity<?> testProtected(Authentication auth){
         AuthResponse authResponse = service.testProtected();
         User user = null;

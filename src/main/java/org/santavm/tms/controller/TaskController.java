@@ -26,8 +26,8 @@ public class TaskController {
     private final TaskService service;
 
     @PostMapping("/create")
-    public ResponseEntity<?> createTask(@Valid @RequestBody Task task){
-        Task savedTask = service.createTask(task);
+    public ResponseEntity<?> createTask(@Valid @RequestBody Task task, Authentication auth){
+        Task savedTask = service.createTask(task, auth);
         return ResponseEntity.status(HttpStatus.CREATED).body("Task created successfully: " + savedTask.getId());
     }
 

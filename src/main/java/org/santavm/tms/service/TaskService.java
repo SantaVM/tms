@@ -28,10 +28,17 @@ public class TaskService {
         return repository.findAllByAuthorId(authorId, pageable);
     }
 
-    public Task createTask(Task task) {
-        //TODO set author as logged in user? - Dataloader refactor see CommServ
+    public Task createTask(Task task, Authentication auth) {
         Optional<User> authorUser = userService.findById(task.getAuthorId());
         Optional<User> executorUser = Optional.empty();
+
+        // Only User-Author can delete Task
+        Long userId = this.extractUserId(auth);
+        boolean isAuthor = userId.equals(task.getAuthorId());
+        if( !isAuthor ){
+            throw new CustomPermissionException("You are not the author of this task: " + task.getAuthorId());
+        }
+
         if (authorUser.isEmpty()){
             return this.badTask();
         }
@@ -59,7 +66,6 @@ public class TaskService {
         return repository.findByCriteria(authorId, executorId, status, priority, pageable);
     }
 
-    //TODO cascade delete comments
     public void deleteTask(Long id, Authentication auth) {
         Task task = repository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("There is no Task with id: "+id)); //OK

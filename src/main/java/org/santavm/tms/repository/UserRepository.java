@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    //TODO delete? for tests only
+    //for tests only
     @Override
     @NonNull
     <S extends User> S save(@NonNull S entity);

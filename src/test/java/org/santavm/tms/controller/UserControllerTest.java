@@ -15,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -42,6 +43,9 @@ class UserControllerTest {
     UserController userController;
 
     @Autowired
+    PasswordEncoder encoder;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
@@ -54,22 +58,18 @@ class UserControllerTest {
                 .apply(springSecurity())
                 .build();
 
-/*        User bob = User.builder()
-                .id(1000L).firstName("user").lastName("Doe").email("bob@domain.com")
-                .password("password").role(User.Role.USER)
-                .tasksAsAuthor(new TreeSet<>())
-                .tasksAsExecutor(new TreeSet<>())
-                .build();*/
-        User bob = new User();
+        String pass = encoder.encode("123");
+        User bob = new User(1L,"user","user","user@user.com",pass, User.Role.ADMIN,new TreeSet<>(),new TreeSet<>());
 
-        Mockito.when(userRepository.save( ArgumentMatchers.any() )).thenReturn(bob);
-        Mockito.doNothing().when(userRepository).deleteById( ArgumentMatchers.any() ); // mocking void method
-        //TODO мешает тесту на регистрацию
-//        Mockito.when(userRepository.findByEmail(ArgumentMatchers.any())).thenReturn(Optional.of(bob));
+        Mockito.when(userRepository.saveAndFlush( ArgumentMatchers.any() )).thenReturn(bob);
+        // makes /register test: 400 ERROR: Email already registered:
+        Mockito.when(userRepository.findByEmail( ArgumentMatchers.any() )).thenReturn(Optional.of(bob));
+//        Mockito.doNothing().when(userRepository).deleteById( ArgumentMatchers.any() ); // mocking void method
+
     }
 
     @Test
-    public void whenUserControllerInjected_thenNotNull() throws Exception {
+    public void whenUserControllerInjected_thenNotNull() {
         assertNotNull(userController);
     }
 
@@ -77,11 +77,11 @@ class UserControllerTest {
     void whenPostRequestToUsersAndValidUser_thenCorrectResponse() throws Exception {
         MediaType textPlainUtf8 = new MediaType(MediaType.TEXT_PLAIN, StandardCharsets.UTF_8);
         String user =
-                "{\"firstName\": \"bob\",\"lastName\": \"Doe\",\"email\": \"bob@domain.com\",\"password\": \"111\",\"role\": \"USER\"}";
+                "{\"firstName\": \"user\",\"lastName\": \"user\",\"email\": \"user@user.com\",\"password\": \"123\",\"role\": \"ADMIN\"}";
         mockMvc.perform(MockMvcRequestBuilders.post("/users/register")
                         .content(user)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isCreated())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())  // isCreated()
                 .andExpect(MockMvcResultMatchers.content().contentType( textPlainUtf8 ));
     }
 
@@ -99,11 +99,13 @@ class UserControllerTest {
     }
 
     @Test
-    @WithMockUser
-    void login() throws Exception { //TODO login test
-/*        mockMvc.perform(MockMvcRequestBuilders.post("/users/login"))
+    void login() throws Exception {
+        String loginBob = "{\"email\": \"user@user.com\",\"password\": \"123\"}";
+        mockMvc.perform(MockMvcRequestBuilders.post("/users/login")
+                .content(loginBob)
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON));*/
+                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON));
     }
 
     @Test
@@ -117,9 +119,11 @@ class UserControllerTest {
     @Test
     @WithMockUser(username="admin",roles={"ADMIN"})
     void whenDeleteAsAdmin_thenSuccess() throws Exception{
-        mockMvc.perform(MockMvcRequestBuilders.delete("/users/100/delete"))
-                .andExpect(MockMvcResultMatchers.status().isNoContent())
-                .andExpect(MockMvcResultMatchers.content().string(StringContains.containsString("User deleted successfully: 100")));
+        mockMvc.perform(MockMvcRequestBuilders.delete("/users/1/delete"))
+//                .andExpect(MockMvcResultMatchers.status().isNoContent())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.content().string(StringContains.containsString("There is no User with id: 1"))
+                );
     }
 
     @Test

@@ -38,7 +38,7 @@ public class UserService {
         }
 
         User savedUser = repository.saveAndFlush(user);
-        return this.mapUserToDto(savedUser);  // TODO тут падают тесты
+        return this.mapUserToDto(savedUser);
     }
 
     public AuthResponse login(AuthRequest authRequest){

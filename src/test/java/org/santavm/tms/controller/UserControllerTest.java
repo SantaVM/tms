@@ -54,12 +54,13 @@ class UserControllerTest {
                 .apply(springSecurity())
                 .build();
 
-        User bob = User.builder()
+/*        User bob = User.builder()
                 .id(1000L).firstName("user").lastName("Doe").email("bob@domain.com")
                 .password("password").role(User.Role.USER)
                 .tasksAsAuthor(new TreeSet<>())
                 .tasksAsExecutor(new TreeSet<>())
-                .build();
+                .build();*/
+        User bob = new User();
 
         Mockito.when(userRepository.save( ArgumentMatchers.any() )).thenReturn(bob);
         Mockito.doNothing().when(userRepository).deleteById( ArgumentMatchers.any() ); // mocking void method

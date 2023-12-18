@@ -41,12 +41,12 @@ public class TaskService {
         }
 
         if (authorUser.isEmpty()){
-            return this.badTask();
+            throw new NoSuchElementException("ERROR: There is no User with authorId: " + task.getAuthorId());
         }
         if(task.getExecutorId() != null){
             executorUser = userRepository.findById(task.getExecutorId());
             if(executorUser.isEmpty()){
-                return this.badTask();
+                throw new NoSuchElementException("ERROR: There is no User with executorId: " + task.getExecutorId());
             }
         }
         Task saved = repository.saveAndFlush(task);
@@ -102,7 +102,7 @@ public class TaskService {
         }
     }
 
-    public Task updateTask(Task task, Authentication auth) {
+    public Task updateTask(Task task, Authentication auth) {  //TODO add TaskDTO with updatable fields only
 
         Task fromDb = repository.findById(task.getId())
                 .orElseThrow(() -> new NoSuchElementException("There is no Task with id: "+task.getId()) );
@@ -126,7 +126,7 @@ public class TaskService {
 
                 return repository.save(fromDb);
             } else {
-                throw new CustomPermissionException("You have no enough permissions to update this task: " + task.getId());
+                throw new CustomPermissionException("You have permission to update ONLY \"status\" for this task: " + task.getId());
             }
         }
 
@@ -154,7 +154,8 @@ public class TaskService {
                 fromDb.setExecutorId(task.getExecutorId());
             } else { // change current executor
                 // update User DB
-                User newExecutorUser = userRepository.findById(task.getExecutorId()).orElseThrow();
+                User newExecutorUser = userRepository.findById(task.getExecutorId())
+                        .orElseThrow(() -> new NoSuchElementException("There is no User with id: "+task.getExecutorId()));
                 newExecutorUser.addTaskAsExecutor(task.getId());
                 userRepository.save(newExecutorUser);
 
@@ -171,10 +172,6 @@ public class TaskService {
         return repository.save(fromDb);
     }
 
-    //TODO refactor this
-    private Task badTask(){
-        return Task.builder().build();
-    }
     private Long extractUserId( Authentication auth){
         User user = null;
         if (auth instanceof UsernamePasswordAuthenticationToken token) {

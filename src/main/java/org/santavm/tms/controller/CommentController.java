@@ -1,7 +1,13 @@
 package org.santavm.tms.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.santavm.tms.dto.AuthResponse;
 import org.santavm.tms.model.Comment;
 import org.santavm.tms.service.CommentService;
 import org.santavm.tms.util.CustomPermissionException;
@@ -18,9 +24,25 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/comments")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "JWT Bearer")
 public class CommentController {
     private final CommentService service;
 
+    @Operation(
+            description = "Add new Comment to TMS",
+            summary = "Add new Comment to particular Task from authenticated User",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Comment created successfully",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "Comment created with id: 1")) }),
+                    @ApiResponse(responseCode = "400", description = "Wrong taskId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "There is no Task with taskId: 1")) }),
+                    @ApiResponse(responseCode = "403", description = "Wrong authorId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "You can not create comment with authorId: 1")) })
+            }
+    )
     @PostMapping("/create")
     public ResponseEntity<?> createComment(@RequestBody @Valid Comment comment, Authentication auth){
         Comment created = service.create(comment, auth);

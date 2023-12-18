@@ -1,6 +1,11 @@
 package org.santavm.tms.controller;
 
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.santavm.tms.model.Task;
@@ -21,14 +26,30 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/tasks")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "JWT Bearer")
 public class TaskController {
 
     private final TaskService service;
 
+    @Operation(
+            description = "Add new Task to TMS",
+            summary = "Add new Task from authenticated User with existing User as executor (optional)",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Task created successfully",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "Task created with id: 1")) }),
+                    @ApiResponse(responseCode = "400", description = "Wrong executorId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "There is no User with executorId: 3")) }),
+                    @ApiResponse(responseCode = "403", description = "Wrong authorId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "You are not the author of this task: 1")) })
+            }
+    )
     @PostMapping("/create")
     public ResponseEntity<?> createTask(@Valid @RequestBody Task task, Authentication auth){
         Task savedTask = service.createTask(task, auth);
-        return ResponseEntity.status(HttpStatus.CREATED).body("Task created successfully: " + savedTask.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body("Task created with id: " + savedTask.getId());
     }
 
     @DeleteMapping("/{id}/delete")
@@ -38,13 +59,26 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).body("Task deleted successfully: " + id);
     }
 
+    @Operation(
+            description = "Update existing Task",
+            summary = "Author can update any field EXCEPT: \"id\", \"authorId\", \"createdAt\" and \"updatedAt\"."
+                    + " Executor can update only \"status\" field.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Task updated successfully",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "Task updated successfully: 1")) }),
+                    @ApiResponse(responseCode = "400", description = "Wrong taskId OR authorId OR executorId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "There is no Task with id: 1")) }),
+                    @ApiResponse(responseCode = "403", description = "Wrong authorId",
+                            content = { @Content(mediaType = "text/plain; charset=utf-8",
+                                    schema = @Schema(example = "You have no permission to update this task: 1")) })
+            }
+    )
     @PutMapping("/update")
     public ResponseEntity<?> updateTask(@Valid @RequestBody Task task, Authentication auth){
+
         Task updatedTask = service.updateTask( task, auth );
-        if(updatedTask.getId() == null){
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("You have no enough permissions to update this task: " + task.getId());
-        }
 
         return ResponseEntity.status(HttpStatus.OK).body("Task updated successfully: " + updatedTask.getId());
     }
@@ -53,10 +87,9 @@ public class TaskController {
     @GetMapping("/by-author/{authorId}")
     public ResponseEntity<?> finAllByAuthorId(@PathVariable("authorId") Long authorId,
                                      @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
         List<Task> fromDb = service.findAllByAuthorId(authorId, pageable);
-        if( fromDb.get(0).getAuthorId() == null){
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body("There is no User with ID:" + authorId);
-        }
+
         return ResponseEntity.status(HttpStatus.OK).body(fromDb);
     }
 

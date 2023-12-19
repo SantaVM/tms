@@ -36,7 +36,7 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
             responseBody.put(fieldName, errorMessage);
         });
 
-        return new ResponseEntity<>(responseBody, headers, HttpStatus.BAD_REQUEST); // or status
+        return new ResponseEntity<>(responseBody, headers, HttpStatus.BAD_REQUEST);
     }
 
     @Override
@@ -77,5 +77,4 @@ public class CustomExceptionHandler extends ResponseEntityExceptionHandler {
 
     }
 
-    //TODO exceptions from jwt
 }

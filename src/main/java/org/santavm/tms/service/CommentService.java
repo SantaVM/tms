@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 public class CommentService {
     private final CommentRepository repository;
 
-    private final TaskRepository taskRepository; // repo to avoid circular dependencies warning
+    private final TaskRepository taskRepository;
 
     // when Task deleted
     public void deleteAllByTask(Long taskId){

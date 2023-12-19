@@ -140,7 +140,6 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
 
-    // TODO doesn't work
     @ExceptionHandler(JwtException.class)
     public ResponseEntity<String> handleJwtException(JwtException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());

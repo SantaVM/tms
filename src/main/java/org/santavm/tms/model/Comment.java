@@ -18,11 +18,9 @@ public class Comment {
     private Long id;
 
     @NotNull
-//    @ManyToOne
     private Long taskId;
 
     @NotNull
-//    @ManyToOne
     private Long authorId;
 
     @NotBlank

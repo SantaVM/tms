@@ -8,7 +8,6 @@ import org.santavm.tms.model.User;
 import org.santavm.tms.repository.UserRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +26,6 @@ public class UserService {
 
     private final AuthenticationManager authenticationManager;
 
-//    @Transactional
     public UserDTO register(UserDTO userDTO){
         User user = this.mapDtoToUser(userDTO);
 

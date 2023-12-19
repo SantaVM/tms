@@ -23,7 +23,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, ListPagingAnd
 
     List<Task> findAllByPriority(Task.Priority priority, Pageable pageable);
 
-    // Комплексная фильтрация с использованием @Query и пагинация
     @Query("SELECT t FROM Task t WHERE " +
             "(:authorId IS NULL OR t.authorId = :authorId) AND " +
             "(:executorId IS NULL OR t.executorId = :executorId) AND " +

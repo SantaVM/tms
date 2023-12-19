@@ -47,14 +47,6 @@ public class Task {
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedAt;
 
-/*    public boolean onlyStatusChanged(Task task) {
-
-        if (!this.title.equals(task.getTitle())) return false;
-        if (!this.description.equals(task.getDescription())) return false;
-        if (this.priority != task.getPriority()) return false;
-        return this.executorId != null ? this.executorId.equals(task.getExecutorId()) : task.getExecutorId() == null;
-    }*/
-
     public HashSet<String> fieldsChanged(Task task){
         HashSet<String> fieldsList = new HashSet<>();
 

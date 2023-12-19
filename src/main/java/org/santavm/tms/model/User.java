@@ -45,8 +45,8 @@ public class User implements UserDetails {
     public void addTaskAsAuthor(Long taskId){
         this.tasksAsAuthor.add(taskId);
     }
-    public boolean removeTaskAsAuthor(Long taskId){
-        return this.tasksAsAuthor.remove(taskId);
+    public void removeTaskAsAuthor(Long taskId){
+        this.tasksAsAuthor.remove(taskId);
     }
 
     @ElementCollection
@@ -55,23 +55,13 @@ public class User implements UserDetails {
     public void addTaskAsExecutor(Long taskId){
         this.tasksAsExecutor.add(taskId);
     }
-    public boolean removeTaskAsExecutor(Long taskId){
-        return this.tasksAsExecutor.remove(taskId);
+    public void removeTaskAsExecutor(Long taskId){
+        this.tasksAsExecutor.remove(taskId);
     }
-
-//    @ElementCollection
-//    private Set<Long> commentsAsAuthor = new TreeSet<>();
-//
-//    public void addCommentAsAuthor(Long taskId){
-//        this.commentsAsAuthor.add(taskId);
-//    }
-//    public boolean removeCommentAsAuthor(Long taskId){
-//        return this.commentsAsAuthor.remove(taskId);
-//    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority( "ROLE_" + role.name() ) ); // ?? "ROLE_" +
+        return List.of(new SimpleGrantedAuthority( "ROLE_" + role.name() ) );
     }
 
     @Override

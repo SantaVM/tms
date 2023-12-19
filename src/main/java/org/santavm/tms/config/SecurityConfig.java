@@ -36,17 +36,9 @@ public class SecurityConfig {
                                     "/configuration/ui", "configuration/security",
                                     "/v3/api-docs", "/v3/api-docs/**",
                                     "/webjars/**").permitAll()
-//                            .requestMatchers("/api/login", "/login", "/api/register").permitAll()
-//                            .requestMatchers("/api/register").anonymous()
-                            .requestMatchers("/users/*/delete").hasRole("ADMIN") // works too
-//                            .requestMatchers(HttpMethod.DELETE).hasRole("ADMIN")
+                            .requestMatchers("/users/*/delete").hasRole("ADMIN")
                             .anyRequest().authenticated()
             )
-//                .httpBasic(Customizer.withDefaults())
-//                .formLogin(AbstractHttpConfigurer::disable
-//                    .loginPage("/login")
-//                    .permitAll()
-//            )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

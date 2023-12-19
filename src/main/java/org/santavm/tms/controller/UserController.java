@@ -1,22 +1,22 @@
 package org.santavm.tms.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.santavm.tms.dto.AuthRequest;
 import org.santavm.tms.dto.UserDTO;
 import org.santavm.tms.dto.AuthResponse;
-import org.santavm.tms.model.User;
 import org.santavm.tms.service.UserService;
 import org.santavm.tms.util.CustomPermissionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +26,7 @@ import java.util.NoSuchElementException;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Tag(name = "first controller for Users")
 public class UserController {
     private final UserService service;
 
@@ -75,7 +76,7 @@ public class UserController {
     @Operation(description = "Delete User from DB",
             summary = "!!! Only user with 'ADMIN' role can delete other users -!!!")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "User deleted successfully",
+            @ApiResponse(responseCode = "200", description = "User deleted successfully",
                     content = { @Content(mediaType = "text/plain; charset=utf-8",
                             schema = @Schema(
                                     example = "User deleted successfully: 1"
@@ -88,11 +89,12 @@ public class UserController {
     @DeleteMapping("/{id}/delete")
     public ResponseEntity<?> deleteUser(@PathVariable Long id){
         service.deleteUser( id );
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body("User deleted successfully: " + id);
+        return ResponseEntity.status(HttpStatus.OK).body("User deleted successfully: " + id);
     }
 
     @SecurityRequirement(name = "JWT Bearer")
-    @GetMapping("/protected")  //TODO remove this
+    @Hidden
+    @GetMapping("/protected")
     public ResponseEntity<?> testProtected(Authentication auth){
         AuthResponse authResponse = service.testProtected();
         return ResponseEntity.ok(authResponse);

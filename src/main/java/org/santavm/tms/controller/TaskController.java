@@ -93,6 +93,33 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).body(fromDb);
     }
 
+    @GetMapping("/by-executor/{executorId}")
+    public ResponseEntity<?> finAllByExecutorId(@PathVariable("executorId") Long executorId,
+                                              @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        List<Task> fromDb =service.findAllByExecutorId(executorId, pageable);
+
+        return ResponseEntity.status(HttpStatus.OK).body(fromDb);
+    }
+
+    @GetMapping("/by-status/{status}")
+    public ResponseEntity<?> finAllByStatus(@PathVariable("status") Task.Status status,
+                                                @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        List<Task> fromDb =service.findAllByStatus(status, pageable);
+
+        return ResponseEntity.status(HttpStatus.OK).body(fromDb);
+    }
+
+    @GetMapping("/by-priority/{priority}")
+    public ResponseEntity<?> finAllByPriority(@PathVariable("priority") Task.Priority priority,
+                                            @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        List<Task> fromDb =service.findAllByPriority(priority, pageable);
+
+        return ResponseEntity.status(HttpStatus.OK).body(fromDb);
+    }
+
     @GetMapping("/criteria")
     public List<Task> findByCriteria(@RequestParam(required = false) Long authorId,
                                      @RequestParam(required = false) Long executorId,

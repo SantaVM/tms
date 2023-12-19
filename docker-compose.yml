@@ -1,0 +1,35 @@
+#version: "3.8"
+services:
+  db:
+    container_name: pg_ # нужно другое имя если такое уже есть в докере(в контейнерах)
+    image: postgres:16.1-alpine3.19
+    environment:
+      POSTGRES_DB: tms_db
+      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: admin
+    #expose: # only internal ports can be exposed
+    #  - "5432"
+    ports:
+      - "5431:5432"
+    #volumes:
+    #  - C:\pg_data:/var/lib/postgresql/data
+    restart: no
+
+  app:
+    build: .
+    container_name: tms_
+    #image: tms_app_img:latest #delete image if build uncommented
+    #pull_policy: missing
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      PG_HOST: db  # db:5432!!! pg_ or db?  db:5431-not pg_:5431-not
+      PG_PORT: 5432  # INTERNAL port here!!!
+      PG_USER: admin
+      PG_PASS: admin
+    #expose:
+    #  - "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+

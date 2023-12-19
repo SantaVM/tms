@@ -212,4 +212,19 @@ public class TaskService {
     public boolean existsById(Long taskId) {
         return repository.existsById(taskId);
     }
+
+    public List<Task> findAllByExecutorId(Long executorId, Pageable pageable) {
+        if( !userRepository.existsById(executorId) ){
+            throw new NoSuchElementException("There is no User with id: " + executorId);
+        }
+        return repository.findAllByExecutorId(executorId, pageable);
+    }
+
+    public List<Task> findAllByStatus(Task.Status status, Pageable pageable) {
+        return repository.findAllByStatus(status, pageable);
+    }
+
+    public List<Task> findAllByPriority(Task.Priority priority, Pageable pageable) {
+        return repository.findAllByPriority(priority, pageable);
+    }
 }

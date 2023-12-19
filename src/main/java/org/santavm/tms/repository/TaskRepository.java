@@ -17,13 +17,10 @@ public interface TaskRepository extends JpaRepository<Task, Long>, ListPagingAnd
     // !!! List as return type
     List<Task> findAllByAuthorId(Long authorId, Pageable pageable);
 
-    // TODO implement controller and server methods
     List<Task> findAllByExecutorId(Long executorId, Pageable pageable);
 
-    // TODO implement controller and server methods
     List<Task> findAllByStatus(Task.Status status, Pageable pageable);
 
-    // TODO implement controller and server methods
     List<Task> findAllByPriority(Task.Priority priority, Pageable pageable);
 
     // Комплексная фильтрация с использованием @Query и пагинация

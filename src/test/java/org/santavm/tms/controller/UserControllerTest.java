@@ -62,7 +62,7 @@ class UserControllerTest {
         User bob = new User(1L,"user","user","user@user.com",pass, User.Role.ADMIN,new TreeSet<>(),new TreeSet<>());
 
         Mockito.when(userRepository.saveAndFlush( ArgumentMatchers.any() )).thenReturn(bob);
-        // makes /register test: 400 ERROR: Email already registered:
+        // makes /register test: 400 ERROR: Email already registered: (intentionally)
         Mockito.when(userRepository.findByEmail( ArgumentMatchers.any() )).thenReturn(Optional.of(bob));
 //        Mockito.doNothing().when(userRepository).deleteById( ArgumentMatchers.any() ); // mocking void method
 

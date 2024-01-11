@@ -1,78 +1,135 @@
 package org.santavm.tms.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
+import org.hibernate.Session;
+import org.santavm.tms.dto.TaskReq;
+import org.santavm.tms.dto.TaskResp;
 import org.santavm.tms.model.Task;
 import org.santavm.tms.model.User;
 import org.santavm.tms.repository.TaskRepository;
 import org.santavm.tms.repository.UserRepository;
 import org.santavm.tms.util.CustomPermissionException;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-@Transactional  // LOB field needs this
 public class TaskService {
     private final TaskRepository repository;
     private final UserRepository userRepository;
-    private final CommentService commentService;
 
-    public List<Task> findAllByAuthorId(Long authorId, Pageable pageable){
+    public List<TaskResp> findAllByAuthorId(Long authorId, Pageable pageable){
         if( !userRepository.existsById(authorId) ){
             throw new NoSuchElementException("There is no User with id: " + authorId);
         }
-        return repository.findAllByAuthorId(authorId, pageable);
+        List<Task> taskList = repository.findAllByAuthorId(authorId, pageable);
+        return taskList.stream().map(this::toResponse).toList();
     }
 
-    public Task createTask(Task task, Authentication auth) {
-        Optional<User> authorUser = userRepository.findById(task.getAuthorId());
-        Optional<User> executorUser = Optional.empty();
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "user_resp", condition = "#taskReq.executorId ne null", key = "#taskReq.executorId"),
+            @CacheEvict(value = "user_resp", key = "#result.author.id")
+    })
+    public Task createTask(TaskReq taskReq, Authentication auth) {
 
-        // Only User-Author can delete Task
         Long userId = this.extractUserId(auth);
-        boolean isAuthor = userId.equals(task.getAuthorId());
-        if( !isAuthor ){
-            throw new CustomPermissionException("You are not the author of this task: " + task.getAuthorId());
+        User authorUser = userRepository.getReferenceById(userId);
+
+        Task newTask = this.toTask(taskReq);
+
+        User executor;
+        Long executorId = taskReq.getExecutorId();
+
+        if(executorId != null){
+            executor = userRepository.findById(executorId).orElseThrow(
+                    () -> new NoSuchElementException("ERROR: There is no User with executorId: " + executorId));
+            newTask.setExecutor(executor);
         }
 
-        if (authorUser.isEmpty()){
-            throw new NoSuchElementException("ERROR: There is no User with authorId: " + task.getAuthorId());
+        newTask.setAuthor(authorUser);
+        newTask.setCreatedAt(new Date());
+
+        return repository.save(newTask);
+    }
+
+    private Task toTask(TaskReq taskReq) {
+        Task task = new Task();
+        task.setTitle(taskReq.getTitle());
+        task.setDescription(taskReq.getDescription());
+        task.setStatus(taskReq.getStatus());
+        task.setPriority(taskReq.getPriority());
+
+        return task;
+    }
+
+    private TaskResp toResponse(Task task){
+        TaskResp response = new TaskResp();
+        response.setId(task.getId());
+        response.setTitle(task.getTitle());
+        response.setDescription(task.getDescription());
+        response.setStatus(task.getStatus());
+        response.setPriority(task.getPriority());
+        response.setCreatedAt( this.toLocalDateTime( task.getCreatedAt() ) );
+        response.setUpdatedAt( this.toLocalDateTime( task.getUpdatedAt() ) );
+        if (Hibernate.isInitialized(task.getAuthor())){
+            User author = task.getAuthor();
+            response.setAuthor("id: " + author.getId()
+                    + ", name: " + author.getFirstName()
+                    + ", surname: " + author.getLastName());
+        } else {
+            response.setAuthor("id: " + task.getAuthorId());
         }
-        if(task.getExecutorId() != null){
-            executorUser = userRepository.findById(task.getExecutorId());
-            if(executorUser.isEmpty()){
-                throw new NoSuchElementException("ERROR: There is no User with executorId: " + task.getExecutorId());
+        if (Hibernate.isInitialized(task.getExecutor())){
+            User executor = task.getExecutor();
+            if (executor != null) {
+                response.setExecutor("id: " + executor.getId()
+                        + ", name: " + executor.getFirstName()
+                        + ", surname: " + executor.getLastName());
+            } else {
+                response.setExecutor("no executor assigned");
             }
+        } else {
+            response.setExecutor("id: " + task.getExecutorId());
         }
-        Task saved = repository.saveAndFlush(task);
-
-        User author = authorUser.get();
-        author.addTaskAsAuthor(saved.getId());
-        if(executorUser.isPresent()){
-            User executor = executorUser.get();
-            executor.addTaskAsExecutor(saved.getId());
-            userRepository.save(executor);
+        if (Hibernate.isInitialized(task.getComments())) {
+            response.setComments(task.getComments().size() + " comment(s)");
+        } else {
+            response.setComments("undefined");
         }
-        userRepository.save(author);
-
-        return saved;
+        return response;
     }
 
-    public List<Task> findByCriteria(Long authorId, Long executorId, Task.Status status, Task.Priority priority, Pageable pageable) {
-        return repository.findByCriteria(authorId, executorId, status, priority, pageable);
+    public List<TaskResp> findByCriteria(Long authorId, Long executorId, Task.Status status, Task.Priority priority, Pageable pageable) {
+        List<Task> taskList = repository.findByCriteria(authorId, executorId, status, priority, pageable);
+        return taskList.stream().map(this::toResponse).toList();
     }
 
-    public void deleteTask(Long id, Authentication auth) {
+    @Caching(evict = {
+            @CacheEvict(value = "tasks", key = "#id"),
+            @CacheEvict(value = "user_resp", condition = "#result.executorId ne null", key = "#result.executorId"),
+            @CacheEvict(value = "user_resp", key = "#result.authorId")
+    })
+    public Task deleteTask(Long id, Authentication auth) {
         Task task = repository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("There is no Task with id: "+id)); //OK
+                .orElseThrow(() -> new NoSuchElementException("There is no Task with id: "+id));
 
         Long authorId = task.getAuthorId();
-        Long executorId = task.getExecutorId();
 
         // Only User-Author can delete Task
         Long userId = this.extractUserId(auth);
@@ -84,28 +141,19 @@ public class TaskService {
         // update Task DB
         repository.deleteById(id);
 
-        //update Comment DB
-        commentService.deleteAllByTask(id);
-
-        // update User DB
-        User author = userRepository.findById(authorId).orElseThrow(); // should exist
-        author.removeTaskAsAuthor(id);
-        if ( authorId.equals(executorId) ) author.removeTaskAsExecutor(id);
-        userRepository.save(author);
-
-        if ( !authorId.equals(executorId)) {
-            if(executorId != null){
-                User executor = userRepository.findById(executorId).orElseThrow(); // should exist
-                executor.removeTaskAsExecutor(id);
-                userRepository.save(executor);
-            }
-        }
+        return task;    // for caching purpose only
     }
 
-    public Task updateTask(Task task, Authentication auth) {  //TODO add TaskDTO with updatable fields only
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "tasks", key = "#id"),
+            @CacheEvict(value = "user_resp", allEntries = true)
+    })
+    public Long updateTask(Long id, TaskReq taskReq, Authentication auth) {
 
-        Task fromDb = repository.findById(task.getId())
-                .orElseThrow(() -> new NoSuchElementException("There is no Task with id: "+task.getId()) );
+        Task fromDb = repository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("There is no Task with id: " + id) );
+        Task newTask = this.toTask(taskReq); // no executor inside
 
         Long authorId = fromDb.getAuthorId();
         Long executorId = fromDb.getExecutorId();
@@ -114,62 +162,45 @@ public class TaskService {
         boolean isAuthor = userId.equals(authorId);
         boolean isExecutor = userId.equals(executorId);
 
-        HashSet<String> fieldsChanged = fromDb.fieldsChanged(task);
+        HashSet<String> fieldsChanged = fromDb.fieldsChanged(newTask);
 
         // Author can update any field except "id", "authorId", "createdAt" and "updatedAt"
         // Executor can update only "status" field
         if( !isAuthor ){
-            if( !isExecutor ) throw new CustomPermissionException("You have no permission to update this task: " + task.getId());
+            if( !isExecutor ) throw new CustomPermissionException("You have no permission to update this task: " + id);
             if( fieldsChanged.size() == 1 && fieldsChanged.contains("status") ){
-                fromDb.setStatus(task.getStatus());
+                fromDb.setStatus(newTask.getStatus());
                 fromDb.setUpdatedAt(new Date());
 
-                return repository.save(fromDb);
+                return repository.save(fromDb).getId();
             } else {
-                throw new CustomPermissionException("You have permission to update ONLY \"status\" for this task: " + task.getId());
+                throw new CustomPermissionException("You have permission to update ONLY \"status\" for this task: " + id);
             }
         }
 
-        if(fieldsChanged.contains("title")) fromDb.setTitle(task.getTitle());
-        if(fieldsChanged.contains("description")) fromDb.setDescription(task.getDescription());
-        if(fieldsChanged.contains("priority")) fromDb.setPriority(task.getPriority());
-        if(fieldsChanged.contains("status")) fromDb.setStatus(task.getStatus());
-        if(fieldsChanged.contains("executorId")){
-            if(fromDb.getExecutorId() == null){ // was null, setting new executor
+        Long newExecutorId = taskReq.getExecutorId();
+        User newExecutor;
 
-                // update User DB
-                User newExecutorUser = userRepository.findById(task.getExecutorId())
-                        .orElseThrow(() -> new NoSuchElementException("There is no User with id: "+task.getExecutorId()) );
-                newExecutorUser.addTaskAsExecutor(task.getId());
-                userRepository.save(newExecutorUser);
-                // update this Task
-                fromDb.setExecutorId(task.getExecutorId());
-            } else if (task.getExecutorId() == null) {  // just delete current executor
+        if ( !Objects.equals(newExecutorId, executorId) ) {  // Executor changed
 
-                // updating User DB
-                User oldExecutorUser = userRepository.findById(fromDb.getExecutorId()).orElseThrow();
-                oldExecutorUser.removeTaskAsExecutor(task.getId());
-                userRepository.save(oldExecutorUser);
-                // update this Task
-                fromDb.setExecutorId(task.getExecutorId());
-            } else { // change current executor
-                // update User DB
-                User newExecutorUser = userRepository.findById(task.getExecutorId())
-                        .orElseThrow(() -> new NoSuchElementException("There is no User with id: "+task.getExecutorId()));
-                newExecutorUser.addTaskAsExecutor(task.getId());
-                userRepository.save(newExecutorUser);
+            if ( newExecutorId != null ) {
+                newExecutor = userRepository.findById(newExecutorId).orElseThrow(
+                        () -> new NoSuchElementException("There is no Executor User with id: " + newExecutorId) );
 
-                User oldExecutorUser = userRepository.findById(fromDb.getExecutorId()).orElseThrow();
-                oldExecutorUser.removeTaskAsExecutor(task.getId());
-                userRepository.save(oldExecutorUser);
-                // update this Task
-                fromDb.setExecutorId(task.getExecutorId());
+                fromDb.setExecutor(newExecutor);
+            } else {  // Executor deleted
+                fromDb.setExecutor(null);
             }
         }
+
+        if(fieldsChanged.contains("title")) fromDb.setTitle(newTask.getTitle());
+        if(fieldsChanged.contains("description")) fromDb.setDescription(newTask.getDescription());
+        if(fieldsChanged.contains("priority")) fromDb.setPriority(newTask.getPriority());
+        if(fieldsChanged.contains("status")) fromDb.setStatus(newTask.getStatus());
 
         fromDb.setUpdatedAt(new Date());
 
-        return repository.save(fromDb);
+        return repository.save(fromDb).getId();
     }
 
     private Long extractUserId( Authentication auth){
@@ -181,50 +212,46 @@ public class TaskService {
         return user.getId();
     }
 
-    //when Author user deleted
-    public void deleteAllByAuthor(Long authorId, Set<Long> asAuthor, Set<Long> asExecutor){
-
-        // update every task with THIS User as executor
-        List<Long> tasksToClearAsExecutor = new ArrayList<>(asExecutor);
-        repository.clearExecutors(tasksToClearAsExecutor);
-
-        // then update every NotNull executor User in every deleted task
-        List<Long> tasksToDelete = new ArrayList<>(asAuthor);
-        for(Long taskId : tasksToDelete){
-            Task task = repository.findById(taskId).orElseThrow();
-            Long exId = task.getExecutorId();
-            if( exId != null){
-                User executor = userRepository.findById(exId).orElseThrow();
-                executor.removeTaskAsExecutor(taskId);
-                userRepository.save(executor);
-            }
-        }
-
-        // then delete comments for the Tasks
-        for(Long taskId : tasksToDelete){
-            commentService.deleteAllByTask(taskId);
-        }
-
-        // then delete all tasks
-        repository.deleteAllByIdInBatch(tasksToDelete);
-    }
-
-    public boolean existsById(Long taskId) {
-        return repository.existsById(taskId);
-    }
-
-    public List<Task> findAllByExecutorId(Long executorId, Pageable pageable) {
+    public List<TaskResp> findAllByExecutorId(Long executorId, Pageable pageable) {
         if( !userRepository.existsById(executorId) ){
             throw new NoSuchElementException("There is no User with id: " + executorId);
         }
-        return repository.findAllByExecutorId(executorId, pageable);
+        List<Task> taskList = repository.findAllByExecutorId(executorId, pageable);
+        return taskList.stream().map(this::toResponse).toList();
     }
 
-    public List<Task> findAllByStatus(Task.Status status, Pageable pageable) {
-        return repository.findAllByStatus(status, pageable);
+    public List<TaskResp> findAllByStatus(Task.Status status, Pageable pageable) {
+        List<Task> taskList = repository.findAllByStatus(status, pageable);
+        return taskList.stream().map(this::toResponse).toList();
     }
 
-    public List<Task> findAllByPriority(Task.Priority priority, Pageable pageable) {
-        return repository.findAllByPriority(priority, pageable);
+    public List<TaskResp> findAllByPriority(Task.Priority priority, Pageable pageable) {
+        List<Task> taskList = repository.findAllByPriority(priority, pageable);
+        return taskList.stream().map(this::toResponse).toList();
+    }
+
+    @Cacheable(value = "tasks", key = "#id")
+    public TaskResp findOne(Long id) {
+        Task task = repository.findFullTask(id).orElseThrow(
+                () -> new NoSuchElementException("There is no Task with id: " + id) );
+        return this.toResponse(task);
+    }
+
+    private String toLocalDateTime(Date date){
+        if(date == null ) return "not updated";
+        Instant instant = date.toInstant();
+        LocalDateTime localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return localDateTime.format(formatter);
+    }
+
+    public List<TaskResp> findAll(Pageable pageable) {
+        List<Task> taskList = repository.findAll(pageable).getContent();
+        return taskList.stream().map(this::toResponse).toList();
+    }
+
+    public List<TaskResp> findFullTasks(Pageable pageable) {
+        List<Task> taskList = repository.findAllBy(pageable).getContent();
+        return taskList.stream().map(this::toResponse).toList();
     }
 }

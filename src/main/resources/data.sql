@@ -4,34 +4,26 @@ create table if not exists user_table
         primary key,
     first_name varchar(40),
     last_name  varchar(60),
-    email      varchar(255),
+    email      varchar(255) not null
+        unique,
     password   varchar(255),
     role       varchar(255)
         constraint user_table_role_check
             check ((role)::text = ANY ((ARRAY ['USER'::character varying, 'ADMIN'::character varying])::text[]))
-    );
-
-create table if not exists user_tasks_as_author
-(
-    tasks_as_author bigint,
-    user_id         bigint not null
-        constraint fkmdv7yqcc6r1obnjrni2dsdfl1
-            references user_table
 );
 
-create table if not exists user_tasks_as_executor
-(
-    tasks_as_executor bigint,
-    user_id           bigint not null
-        constraint fkolnwoqa76rdc2807kla8n2cul
-            references user_table
-);
+create index email_idx
+    on user_table (email);
 
 create table if not exists task
 (
-    author_id   bigint       not null,
+    author_id   bigint
+        constraint fknubdxo1xrrq1581v80b7mnhxh
+            references user_table,
     created_at  timestamp(6),
-    executor_id bigint,
+    executor_id bigint
+        constraint fkfrin7ema3xvk43ku7ykkjb2bn
+            references user_table,
     id          bigint       not null
         primary key,
     updated_at  timestamp(6),
@@ -49,11 +41,15 @@ create table if not exists task
 
 create table if not exists comment
 (
-    author_id  bigint not null,
-    created_at timestamp(6),
+    author_id  bigint
+        constraint fkr2rtfnh4t1lmb7l6b3nms48ta
+            references user_table,
+    created_at timestamp(6) not null,
     id         bigint not null
         primary key,
-    task_id    bigint not null,
+    task_id    bigint
+        constraint fkfknte4fhjhet3l1802m1yqa50
+            references task,
     updated_at timestamp(6),
     content    varchar(255)
 );

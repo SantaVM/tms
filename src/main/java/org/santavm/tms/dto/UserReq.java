@@ -7,15 +7,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.santavm.tms.model.User;
 
-import java.util.Set;
-import java.util.TreeSet;
-
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserDTO {
-    private Long id;
+public class UserReq {
+
     @NotBlank
     @Size(min=3, max=20)
     private String firstName;
@@ -29,6 +26,4 @@ public class UserDTO {
     @Size(min=3, max=20)
     private String password;
     private User.Role role;
-    private Set<Long> tasksAsAuthor;
-    private Set<Long> tasksAsExecutor;
 }

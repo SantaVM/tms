@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:test
+    driverClassName: org.h2.Driver
+    username: sa
+    password: sa
+  h2:
+    console.enabled: false
+    console:
+      path: /h2
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+#  to prevent loading data.sql
+  sql:
+    init:
+      mode: never
+      data-locations: classpath:test_data.sql

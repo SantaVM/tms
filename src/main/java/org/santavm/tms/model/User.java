@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.hibernate.Hibernate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,11 +14,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.*;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "user_table")
+@Table(name = "user_table", indexes = {
+        @Index(name = "email_idx", columnList = "email")
+})
 public class User implements UserDetails {
     @Id
     @GeneratedValue
@@ -26,12 +30,15 @@ public class User implements UserDetails {
     @NotBlank
     @Size(min = 3, max=40)
     private String firstName;
+
     @NotBlank
     @Size(min = 3, max=60)
     private String lastName;
     @NotEmpty
     @Email
+    @Column(nullable = false, unique = true)
     private String email;
+
     @NotBlank
     @Size(min=3)
     private String password;
@@ -39,25 +46,25 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @ElementCollection  // объявляем как тип интерфейса - иначе Хибернейт не может сопоставить типы!
-    private Set<Long> tasksAsAuthor = new TreeSet<>();
+    @OneToMany(mappedBy = "author",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Task> authoredTasks = new ArrayList<>();
 
-    public void addTaskAsAuthor(Long taskId){
-        this.tasksAsAuthor.add(taskId);
-    }
-    public void removeTaskAsAuthor(Long taskId){
-        this.tasksAsAuthor.remove(taskId);
-    }
+    @OneToMany(mappedBy = "executor",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH},
+            fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Task> executedTasks = new ArrayList<>();
 
-    @ElementCollection
-    private Set<Long> tasksAsExecutor = new TreeSet<>();
-
-    public void addTaskAsExecutor(Long taskId){
-        this.tasksAsExecutor.add(taskId);
-    }
-    public void removeTaskAsExecutor(Long taskId){
-        this.tasksAsExecutor.remove(taskId);
-    }
+    @OneToMany(mappedBy = "author",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<Comment> comments = new ArrayList<>();
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -89,10 +96,32 @@ public class User implements UserDetails {
         return true;
     }
 
-
-    public static enum Role{
+    public enum Role{
         USER,
         ADMIN,  // Only Admin can delete Users
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o))
+            return false;
+        User user = (User) o;
+        return Objects.equals(email, user.getEmail());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.email);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "(" +
+                "id = " + id + ", " +
+                "firstName = " + firstName + ", " +
+                "lastName = " + lastName + ", " +
+                "email = " + email + ", " +
+                "role = " + role + ")";
+    }
 }

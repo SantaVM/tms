@@ -22,7 +22,7 @@ services:
     #pull_policy: missing
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      PG_HOST: db  # db:5432!!! pg_ or db?  db:5431-not pg_:5431-not
+      PG_HOST: db  # db:5432
       PG_PORT: 5432  # INTERNAL port here!!!
       PG_USER: admin
       PG_PASS: admin

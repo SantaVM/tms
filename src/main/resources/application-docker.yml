@@ -11,8 +11,6 @@ spring:
     properties:
       hibernate:
         format_sql: false
-    database: postgresql
-  #    database-platform: org.hibernate.dialect.PostgreSQLDialect
   docker:
     compose:
       enabled: false

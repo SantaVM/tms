@@ -26,3 +26,4 @@ logging:
       springframework:
         cache: trace
         orm.jpa.JpaTransactionManager: debug
+        security: trace

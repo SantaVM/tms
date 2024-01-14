@@ -42,7 +42,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        String email = jwtService.extractUserEmail(token);
+        // passing JwtExceptions to MyAuthenticationEntryPoint (we can rethrow here to see them in debug console)
+        String email = null;
+        try {
+            email = jwtService.extractUserEmail(token);
+        } catch (Exception e) {
+            request.setAttribute("jwt_exception", e.getMessage());
+        }
 
         if(email != null && SecurityContextHolder.getContext().getAuthentication() == null){
 
